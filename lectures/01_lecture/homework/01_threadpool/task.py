@@ -44,7 +44,7 @@ def fetch_one_with_delay(url_delay: tuple[str, float]) -> str:
 # ЗАДАНИЕ 1.1 — Базовый пул потоков
 # ═══════════════════════════════════════════════════════════
 
-
+from concurrent.futures import ThreadPoolExecutor, as_completed
 def fetch_all(urls: list[str], max_workers: int = 4) -> list[str]:
     """Скачать все URL через ThreadPoolExecutor.
 
@@ -61,8 +61,9 @@ def fetch_all(urls: list[str], max_workers: int = 4) -> list[str]:
         >>> fetch_all(["a", "b", "c"], max_workers=2)
         ['data:a', 'data:b', 'data:c']
     """
-    # TODO: реализуйте
-    raise NotImplementedError
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        res = pool.map(fetch_one, urls)
+    return list(res)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -85,8 +86,23 @@ def fetch_all_with_errors(urls: list[str], max_workers: int = 4) -> list[str | N
         - Для "bad" URL вернуть None
         - Для остальных — результат fetch_one()
     """
-    # TODO: реализуйте
-    raise NotImplementedError
+    def safe(url: str) -> str | None:
+        if 'bad' in url:
+            raise ConnectionError(f"Ошибка соединения {url}")
+        return fetch_one(url)
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = []
+        for url in urls:
+            future = pool.submit(safe, url)
+            futures.append(future)
+        res = []
+        for future in futures:
+            try:
+                res.append(future.result())
+            except Exception:
+                res.append(None)
+    return res
+
 
 
 # ═══════════════════════════════════════════════════════════
@@ -123,5 +139,15 @@ def fetch_all_with_progress(
         )
         # completed[-1] == 3
     """
-    # TODO: реализуйте
-    raise NotImplementedError
+    res = []
+    total = len(urls)
+    completed = 0
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        future_to_url = {pool.submit(fetch_one, url): url for url in urls}
+        for f in as_completed(future_to_url):
+            data = f.result()
+            res.append(data)
+            completed += 1
+            if progress_callback is not None:
+                progress_callback(completed, total)
+    return res

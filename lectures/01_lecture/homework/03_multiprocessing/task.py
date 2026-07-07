@@ -17,7 +17,8 @@ multiprocessing.Pool.
 # ═══════════════════════════════════════════════════════════
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ — не меняйте их
 # ═══════════════════════════════════════════════════════════
-
+from concurrent.futures import ThreadPoolExecutor
+import multiprocess as mp
 
 def is_prime(n: int) -> bool:
     """Проверка числа на простоту (CPU-bound)."""
@@ -54,8 +55,10 @@ def compute_sequential(numbers: list[int]) -> list[int]:
 
     Просто для сравнения с параллельной версией.
     """
-    # TODO: реализуйте
-    raise NotImplementedError
+    results = []
+    for num in numbers:
+        results.append(heavy_compute(num))
+    return results
 
 
 def compute_parallel_pool(numbers: list[int], processes: int = 4) -> list[int]:
@@ -65,8 +68,10 @@ def compute_parallel_pool(numbers: list[int], processes: int = 4) -> list[int]:
         - Использовать Pool(processes) как context manager
         - Результаты в порядке numbers
     """
-    # TODO: реализуйте
-    raise NotImplementedError
+    if not numbers:
+        return []
+    with mp.Pool(processes=processes) as pool:
+        return pool.map(heavy_compute, numbers)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -79,5 +84,7 @@ def compute_with_threads(numbers: list[int], workers: int = 4) -> list[int]:
 
     Должно работать МЕДЛЕННЕЕ, чем Pool, из-за GIL.
     """
-    # TODO: реализуйте
-    raise NotImplementedError
+    if not numbers:
+        return []
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return list(pool.map(heavy_compute, numbers))
